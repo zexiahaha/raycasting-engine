@@ -1,0 +1,25 @@
+build.bat
+Microsoft (R) C/C++ Optimizing Compiler Version 19.44.35213 for x64
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+main.c
+Microsoft (R) Incremental Linker Version 14.44.35213.0
+Copyright (C) Microsoft Corporation.  All rights reserved.
+
+/out:main.exe
+/debug
+/LIBPATH:..\vendor\raylib\lib\raylib.lib
+user32.lib
+gdi32.lib
+opengl32.lib
+shell32.lib
+winmm.lib
+main.obj
+main.obj : error LNK2019: unresolved external symbol InitWindow referenced in function main
+main.obj : error LNK2019: unresolved external symbol WindowShouldClose referenced in function main
+main.obj : error LNK2019: unresolved external symbol ClearBackground referenced in function main
+main.obj : error LNK2019: unresolved external symbol BeginDrawing referenced in function main
+main.obj : error LNK2019: unresolved external symbol EndDrawing referenced in function main
+main.obj : error LNK2019: unresolved external symbol SetTargetFPS referenced in function main
+main.obj : error LNK2019: unresolved external symbol DrawText referenced in function main
+main.exe : fatal error LNK1120: 7 unresolved externals
