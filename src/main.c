@@ -45,13 +45,69 @@ double CastRay(const Player* p, double rayDirX, double rayDirY, int* hitSide, in
 
 int main()
 {
+    Player player;
+    player.posX = 22.0;
+    player.posY = 12.0;
+    player.dirX = -1;
+    player.dirY = 0;
+    player.planeX = 0;
+    player.planeY = 0.66;
+
+    Color screen[SCREEN_HEIGHT][SCREEN_WIDTH];
+
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "raylib basic window");
     SetTargetFPS(60);
     while (!WindowShouldClose()) {
-        BeginDrawing();
-        ClearBackground(RAYWHITE);
-        DrawText("It works!", 20, 20, 20, BLACK);
-        EndDrawing();
+        for (int x = 0; x < SCREEN_WIDTH; x++)
+        {
+            double cameraX = 2.0 * x / (double)SCREEN_WIDTH - 1.0;
+            double rayDirX = player.dirX + player.planeX * cameraX;
+            double rayDirY = player.dirY + player.planeY * cameraX;
+
+            int hitSide, hitMapX, hitMapY;
+            double perpWallDist = CastRay(&player, rayDirX, rayDirY, &hitSide, &hitMapX, &hitMapY);
+
+            int lineHeight = (int)(SCREEN_HEIGHT / perpWallDist);
+            int drawStart = (SCREEN_HEIGHT - lineHeight) / 2;
+            if (drawStart < 0) drawStart = 0;
+
+            int drawEnd = lineHeight + drawStart;
+            if (drawEnd > SCREEN_HEIGHT) drawEnd = SCREEN_HEIGHT - 1;
+
+            for (int y = 0; y < SCREEN_HEIGHT; y++)
+            {
+                if (y < drawStart)
+                {
+                    screen[y][x] = (Color){48, 48, 48, 255};
+                }
+                else if (y > drawEnd)
+                {
+                    screen[y][x] = (Color){96, 96, 96, 255};
+                }
+                else
+                {
+                    Color color;
+                    switch(worldMap[hitMapX][hitMapY])
+                    {
+                        case 1: color = (Color){255, 0, 0, 255}; break;
+                        case 2: color = (Color){0, 255, 0, 255}; break;
+                        case 3: color = (Color){0, 0, 255, 255}; break;
+                        case 4: color = (Color){255, 255, 255, 255}; break;
+                        case 5: color = (Color){255, 255, 0, 255}; break;
+                        default: color = (Color){128, 128, 128, 255}; break;
+                    }
+
+                    if (hitSide == 1)
+                    {
+                        color.r /= 2;
+                        color.g /= 2;
+                        color.b /= 2;
+                    }
+
+                    screen[y][x] = color;
+                }
+            }
+        }
     }
     CloseWindow();
     return 0;
