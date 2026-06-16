@@ -1,5 +1,6 @@
 #include "raylib.h"
 #include <math.h>
+#include <stdlib.h>
 
 #define MAP_WIDTH 24
 #define MAP_HEIGHT 24
@@ -53,11 +54,77 @@ int main()
     player.planeX = 0;
     player.planeY = 0.66;
 
-    Color screen[SCREEN_HEIGHT][SCREEN_WIDTH];
+    double moveSpeed = 0.05;
+    double rotSpeed = 0.003;
 
+    Color (*screen)[SCREEN_WIDTH] = malloc(sizeof(Color) * SCREEN_HEIGHT * SCREEN_WIDTH);
+    
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "raylib basic window");
+
+    DisableCursor();
+
+    Image img = (Image){
+        .data = screen,
+        .width = SCREEN_WIDTH,
+        .height = SCREEN_HEIGHT,
+        .mipmaps = 1,
+        .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8
+    };
+    Texture2D tex = LoadTextureFromImage(img);
+
     SetTargetFPS(60);
     while (!WindowShouldClose()) {
+        double dx = 0, dy = 0;
+
+        if (IsKeyDown(KEY_W) || IsKeyDown(KEY_UP))
+        {
+            dx += player.dirX;
+            dy += player.dirY;
+        }
+        if (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN))
+        {
+            dx -= player.dirX;
+            dy -= player.dirY;
+        } 
+        if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT))
+        {
+            dx -= player.planeX;
+            dy -= player.planeY;
+        } 
+        if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT))
+        {
+            dx += player.planeX;
+            dy += player.planeY;
+        }
+
+        if (dx != 0 || dy != 0)
+        {
+            double len = sqrt(dx * dx + dy * dy);
+            dx = dx / len;
+            dy = dy / len;
+        }
+
+        double newX = player.posX + dx * moveSpeed;
+        double newY = player.posY + dy * moveSpeed;
+
+        if (worldMap[(int)newX][(int)player.posY] == 0)
+        {
+            player.posX = newX;
+        }
+        if (worldMap[(int)player.posX][(int)newY] == 0)
+        {
+            player.posY = newY;
+        }
+
+        double rotAngle = -GetMouseDelta().x * rotSpeed;
+        double oldDirX = player.dirX;
+        player.dirX = player.dirX * cos(rotAngle) - player.dirY * sin(rotAngle);
+        player.dirY = oldDirX * sin(rotAngle) + player.dirY * cos(rotAngle);
+
+        double oldPlaneX = player.planeX;
+        player.planeX = player.planeX * cos(rotAngle) - player.planeY * sin(rotAngle);
+        player.planeY = oldPlaneX * sin(rotAngle) + player.planeY * cos(rotAngle);
+
         for (int x = 0; x < SCREEN_WIDTH; x++)
         {
             double cameraX = 2.0 * x / (double)SCREEN_WIDTH - 1.0;
@@ -108,8 +175,16 @@ int main()
                 }
             }
         }
+
+        UpdateTexture(tex, *screen);
+        BeginDrawing();
+        DrawTexture(tex, 0, 0, WHITE);
+        EndDrawing();
     }
+    
+    UnloadTexture(tex);
     CloseWindow();
+    free(screen);
     return 0;
 }
 
