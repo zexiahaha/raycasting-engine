@@ -44,6 +44,8 @@ typedef struct Player
 
 double CastRay(const Player* p, double rayDirX, double rayDirY, int* hitSide, int* hitMapX, int* hitMapY);
 
+uint32_t* GenerateBrickTexture(int texWidth, int texHeight);
+
 int main()
 {
     Player player;
@@ -262,4 +264,21 @@ double CastRay(const Player* p, double rayDirX, double rayDirY, int* hitSide, in
     *hitMapY = mapY;
 
     return perpWallDist;
+}
+
+uint32_t* GenerateBrickTexture(int texWidth, int texHeight)
+{
+    int size = texWidth * texHeight;
+    uint32_t* tex = malloc(size * sizeof(uint32_t));
+
+    for (int y = 0; y < texHeight; y++)
+    {
+        for (int x = 0; x < texWidth; x++)
+        {
+            uint32_t color = ;
+            tex[y * texWidth + x] = color;
+        }
+    }
+
+    return tex;
 }
