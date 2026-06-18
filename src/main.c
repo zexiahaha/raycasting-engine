@@ -1,6 +1,7 @@
 #include "raylib.h"
 #include <math.h>
 #include <stdlib.h>
+#include <stdint.h>
 
 #define MAP_WIDTH 24
 #define MAP_HEIGHT 24
@@ -42,7 +43,7 @@ typedef struct Player
     double planeX, planeY;
 } Player;
 
-double CastRay(const Player* p, double rayDirX, double rayDirY, int* hitSide, int* hitMapX, int* hitMapY);
+double CastRay(const Player* p, double rayDirX, double rayDirY, int* hitSide, int* hitMapX, int* hitMapY, double* wallX);
 
 uint32_t* GenerateBrickTexture(int texWidth, int texHeight);
 
@@ -58,6 +59,8 @@ int main()
 
     double moveSpeed = 0.05;
     double rotSpeed = 0.003;
+    int texWidth = 64;
+    int texHeight = 64;
 
     Color (*screen)[SCREEN_WIDTH] = malloc(sizeof(Color) * SCREEN_HEIGHT * SCREEN_WIDTH);
     
@@ -75,6 +78,9 @@ int main()
     Texture2D tex = LoadTextureFromImage(img);
 
     SetTargetFPS(60);
+
+    uint32_t* brickTex = GenerateBrickTexture(texWidth, texHeight);
+
     while (!WindowShouldClose()) {
         double dx = 0, dy = 0;
 
@@ -134,7 +140,8 @@ int main()
             double rayDirY = player.dirY + player.planeY * cameraX;
 
             int hitSide, hitMapX, hitMapY;
-            double perpWallDist = CastRay(&player, rayDirX, rayDirY, &hitSide, &hitMapX, &hitMapY);
+            double wallX;
+            double perpWallDist = CastRay(&player, rayDirX, rayDirY, &hitSide, &hitMapX, &hitMapY, &wallX);
 
             int lineHeight = (int)(SCREEN_HEIGHT / perpWallDist);
             int drawStart = (SCREEN_HEIGHT - lineHeight) / 2;
@@ -142,6 +149,10 @@ int main()
 
             int drawEnd = lineHeight + drawStart;
             if (drawEnd > SCREEN_HEIGHT) drawEnd = SCREEN_HEIGHT - 1;
+
+            int texX = (int)(wallX * texWidth);
+            double step = (double)texHeight / lineHeight;
+            double texPos = (drawStart - SCREEN_HEIGHT / 2 + lineHeight / 2) * step;
 
             for (int y = 0; y < SCREEN_HEIGHT; y++)
             {
@@ -156,15 +167,20 @@ int main()
                 else
                 {
                     Color color;
-                    switch(worldMap[hitMapX][hitMapY])
-                    {
-                        case 1: color = (Color){255, 0, 0, 255}; break;
-                        case 2: color = (Color){0, 255, 0, 255}; break;
-                        case 3: color = (Color){0, 0, 255, 255}; break;
-                        case 4: color = (Color){255, 255, 255, 255}; break;
-                        case 5: color = (Color){255, 255, 0, 255}; break;
-                        default: color = (Color){128, 128, 128, 255}; break;
-                    }
+                    // switch(worldMap[hitMapX][hitMapY])
+                    // {
+                    //     case 1: color = (Color){255, 0, 0, 255}; break;
+                    //     case 2: color = (Color){0, 255, 0, 255}; break;
+                    //     case 3: color = (Color){0, 0, 255, 255}; break;
+                    //     case 4: color = (Color){255, 255, 255, 255}; break;
+                    //     case 5: color = (Color){255, 255, 0, 255}; break;
+                    //     default: color = (Color){128, 128, 128, 255}; break;
+                    // }
+
+                    int texY = (int)texPos & (texHeight - 1);
+                    texPos += step;
+
+                    color = GetColor(brickTex[texY * texWidth + texX]);
 
                     if (hitSide == 1)
                     {
@@ -187,10 +203,11 @@ int main()
     UnloadTexture(tex);
     CloseWindow();
     free(screen);
+    free(brickTex);
     return 0;
 }
 
-double CastRay(const Player* p, double rayDirX, double rayDirY, int* hitSide, int* hitMapX, int* hitMapY)
+double CastRay(const Player* p, double rayDirX, double rayDirY, int* hitSide, int* hitMapX, int* hitMapY, double* wallX)
 {
     int mapX = (int)p->posX;
     int mapY = (int)p->posY;
@@ -263,6 +280,16 @@ double CastRay(const Player* p, double rayDirX, double rayDirY, int* hitSide, in
     *hitMapX = mapX;
     *hitMapY = mapY;
 
+    if (*hitSide == 0)
+    {
+        *wallX = p->posY + perpWallDist * rayDirY;
+    }
+    else
+    {
+        *wallX = p->posX + perpWallDist *rayDirX;
+    }
+    *wallX -= floor(*wallX);
+
     return perpWallDist;
 }
 
@@ -275,8 +302,20 @@ uint32_t* GenerateBrickTexture(int texWidth, int texHeight)
     {
         for (int x = 0; x < texWidth; x++)
         {
-            uint32_t color = ;
-            tex[y * texWidth + x] = color;
+            int brickRow = y / 17;
+            int shiftedX = x - 8;
+            if (y % 17 == 16)
+            {
+                tex[y * texWidth + x] = ColorToInt((Color){0, 0, 0, 255});
+            }
+            else if ((brickRow % 2 == 0 && x % 17 == 16) || (brickRow % 2 != 0 && x % 17 == 7 && shiftedX >= 0))
+            {
+                tex[y * texWidth + x] = ColorToInt((Color){0, 0, 0, 255});
+            }
+            else
+            {
+                tex[y * texWidth + x] = ColorToInt((Color){192, 64, 64, 255});
+            }
         }
     }
 
