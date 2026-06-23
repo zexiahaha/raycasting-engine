@@ -50,6 +50,7 @@ typedef struct Player
 double CastRay(const Player* p, double rayDirX, double rayDirY, int* hitSide, int* hitMapX, int* hitMapY, double* wallX);
 
 uint32_t* GenerateBrickTexture(int texWidth, int texHeight);
+uint32_t* GenerateFloorTexture(int texWidth, int texHeight);
 
 void UpdateFrame();
 
@@ -74,6 +75,7 @@ Image img;
 Texture2D tex;
 
 uint32_t* brickTex;
+uint32_t* floorTex;
 
 int main()
 {
@@ -91,6 +93,7 @@ int main()
     };
     tex = LoadTextureFromImage(img);
     brickTex = GenerateBrickTexture(texWidth, texHeight);
+    floorTex = GenerateFloorTexture(texWidth, texHeight);
 
     #ifdef PLATFORM_WEB
         emscripten_set_main_loop(UpdateFrame, 0, 1);
@@ -104,6 +107,7 @@ int main()
     CloseWindow();
     free(screen);
     free(brickTex);
+    free(floorTex);
     return 0;
 }
 
@@ -160,6 +164,55 @@ void UpdateFrame()
     player.planeX = player.planeX * cos(rotAngle) - player.planeY * sin(rotAngle);
     player.planeY = oldPlaneX * sin(rotAngle) + player.planeY * cos(rotAngle);
 
+    double rayDirLeftX = player.dirX + player.planeX * (-1.0);
+    double rayDirLeftY = player.dirY + player.planeY * (-1.0);
+    double rayDirRightX = player.dirX + player.planeX * (+1.0);
+    double rayDirRightY = player.dirY + player.planeY * (+1.0);
+
+    for (int y = SCREEN_HEIGHT / 2 + 1; y < SCREEN_HEIGHT; y++)
+    {
+        double rowDistance = 0.5 * SCREEN_HEIGHT / (y - SCREEN_HEIGHT / 2);
+
+        double floorStepX = rowDistance * (rayDirRightX - rayDirLeftX) / SCREEN_WIDTH;
+        double floorStepY = rowDistance * (rayDirRightY - rayDirLeftY) / SCREEN_WIDTH;
+
+        double floorX = player.posX + rowDistance * rayDirLeftX;
+        double floorY = player.posY + rowDistance * rayDirLeftY;
+
+        for (int x = 0; x < SCREEN_WIDTH; x++)
+        {
+            int texX = (int)(floorX * texWidth) & (texWidth - 1);
+            int texY = (int)(floorY * texHeight) & (texHeight - 1);
+            screen[y][x] = GetColor(floorTex[texY * texWidth + texX]);
+
+            floorX += floorStepX;
+            floorY += floorStepY;
+        }
+    }
+
+    for (int y = SCREEN_HEIGHT / 2 - 1; y > 0; y--)
+    {
+        double rowDistance = 0.5 * SCREEN_HEIGHT / (SCREEN_HEIGHT / 2 - y);
+
+        double floorStepX = rowDistance * (rayDirRightX - rayDirLeftX) / SCREEN_WIDTH;
+        double floorStepY = rowDistance * (rayDirRightY - rayDirLeftY) / SCREEN_WIDTH;
+
+        double floorX = player.posX + rowDistance * rayDirLeftX;
+        double floorY = player.posY + rowDistance * rayDirLeftY;
+
+        for (int x = 0; x < SCREEN_WIDTH; x++)
+        {
+            int texX = (int)(floorX * texWidth) & (texWidth - 1);
+            int texY = (int)(floorY * texHeight) & (texHeight - 1);
+            screen[y][x] = GetColor(floorTex[texY * texWidth + texX]);
+
+            floorX += floorStepX;
+            floorY += floorStepY;
+        }
+    }
+
+
+
     for (int x = 0; x < SCREEN_WIDTH; x++)
     {
         double cameraX = 2.0 * x / (double)SCREEN_WIDTH - 1.0;
@@ -185,11 +238,11 @@ void UpdateFrame()
         {
             if (y < drawStart)
             {
-                screen[y][x] = (Color){48, 48, 48, 255};
+                // screen[y][x] = (Color){48, 48, 48, 255};
             }
             else if (y > drawEnd)
             {
-                screen[y][x] = (Color){96, 96, 96, 255};
+                // screen[y][x] = (Color){96, 96, 96, 255};
             }
             else
             {
@@ -335,6 +388,27 @@ uint32_t* GenerateBrickTexture(int texWidth, int texHeight)
             else
             {
                 tex[y * texWidth + x] = ColorToInt((Color){192, 64, 64, 255});
+            }
+        }
+    }
+
+    return tex;
+}
+
+uint32_t* GenerateFloorTexture(int texWidth, int texHeight)
+{
+    int size = texWidth * texHeight;
+    uint32_t* tex = malloc(size * sizeof(uint32_t));
+
+    for (int y = 0; y < texHeight; y++)
+    {
+        for (int x = 0; x < texWidth; x++)
+        {
+            if ((x / 8 + y / 8) % 2 == 0)
+            {
+                tex[y* texWidth + x] = ColorToInt((Color){160, 160, 160, 255});
+            } else {
+                tex[y* texWidth + x] = ColorToInt((Color){96, 96, 96, 255});
             }
         }
     }
