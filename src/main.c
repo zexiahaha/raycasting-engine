@@ -76,12 +76,34 @@ Texture2D tex;
 
 uint32_t* brickTex;
 uint32_t* floorTex;
+uint32_t* spriteTex;
+
+double zBuffer[SCREEN_WIDTH];
+
+#define MAX_SPRITES 100
+
+typedef struct Sprite{
+    double x, y;
+    int alive;
+} Sprite;
+
+Sprite sprites[MAX_SPRITES];
+int spriteCount = 0;
+
+int spriteOrder[MAX_SPRITES];
+double spriteDistance[MAX_SPRITES];
 
 int main()
 {
     InitWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "raylib basic window");
     DisableCursor();
     SetTargetFPS(60);
+
+    sprites[0] = (Sprite){.x = 20.5, .y = 11.5, .alive = 1};
+    sprites[1] = (Sprite){.x = 18.5, .y = 4.5, .alive = 1};
+    sprites[2] = (Sprite){.x = 10.5, .y = 8.5, .alive = 1};
+
+    spriteCount = 3;
 
     screen = malloc(sizeof(Color) * SCREEN_HEIGHT * SCREEN_WIDTH);
     img = (Image){
@@ -94,6 +116,8 @@ int main()
     tex = LoadTextureFromImage(img);
     brickTex = GenerateBrickTexture(texWidth, texHeight);
     floorTex = GenerateFloorTexture(texWidth, texHeight);
+    spriteTex = GenerateSpriteTexture(texWidth, texHeight);
+
 
     #ifdef PLATFORM_WEB
         emscripten_set_main_loop(UpdateFrame, 0, 1);
@@ -108,7 +132,41 @@ int main()
     free(screen);
     free(brickTex);
     free(floorTex);
+    free(spriteTex);
     return 0;
+}
+
+void RenderSprites()
+{
+    for (int i = 0; i < spriteCount; i++)
+    {
+        spriteOrder[i] = i;
+        spriteDistance[i] = (player.posX - sprites[i],x) * (player.posX - sprites[i],x)
+                            + (player.posY - sprites[i].y) * (player.posY - sprites[i].y);
+    }
+
+    for (int i = 0; i < spriteCount - 1; i++)
+    {
+        for (int j = 0; j < spriteCount - 1 - i; j++)
+        {
+            if (spriteDistance[spriteOrder[j]] < spriteDistance[spriteOrder[j + 1]])
+            {
+                int temp = spriteOrder[j];
+                spriteOrder[j] = spriteOrder[j + 1];
+                spriteOrder[j + 1] = temp;
+            }
+        }
+    }
+
+    for (int i = 0; i < spriteCount; i++)
+    {
+        int s = spriteOrder[i];
+
+        double spriteX = sprites[s].x - player.posX;
+        double spriteY = sprites[s].y - player.posY;
+
+        
+    }
 }
 
 void UpdateFrame()
@@ -222,6 +280,8 @@ void UpdateFrame()
         int hitSide, hitMapX, hitMapY;
         double wallX;
         double perpWallDist = CastRay(&player, rayDirX, rayDirY, &hitSide, &hitMapX, &hitMapY, &wallX);
+
+        zBuffer[x] = perpWallDist;
 
         int lineHeight = (int)(SCREEN_HEIGHT / perpWallDist);
         int drawStart = (SCREEN_HEIGHT - lineHeight) / 2;
@@ -409,6 +469,32 @@ uint32_t* GenerateFloorTexture(int texWidth, int texHeight)
                 tex[y* texWidth + x] = ColorToInt((Color){160, 160, 160, 255});
             } else {
                 tex[y* texWidth + x] = ColorToInt((Color){96, 96, 96, 255});
+            }
+        }
+    }
+
+    return tex;
+}
+
+uint32_t GenerateSpriteTexture(int texWidth, int texHeight)
+{
+    int size = texWidth * texHeight;
+    uint32_t* tex = malloc(size * sizeof(uint32_t));
+
+    
+    for (int y = 0; y < texHeight; y++)
+    {
+        for (int x = 0; x < texWidth; x++)
+        {
+            int cx = x - 32;
+            int cy = y - 32;
+            if (abs(cx) + abs(cy) < 28)
+            {
+                tex[y * texWidth + x] = ColorToInt((Color){220, 50, 50, 255});
+            }
+            else
+            {
+                tex[y * texWidth + x] = ColorToInt((Color){255, 0, 50, 255});
             }
         }
     }
