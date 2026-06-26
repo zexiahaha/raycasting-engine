@@ -1,4 +1,5 @@
 @echo off
+call D:\project\mass\mass\emsdk-6.0.0\emsdk_env.bat
 if not exist .\build_web mkdir .\build_web
 pushd .\build_web
 
