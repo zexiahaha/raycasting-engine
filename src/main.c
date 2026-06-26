@@ -51,6 +51,7 @@ double CastRay(const Player* p, double rayDirX, double rayDirY, int* hitSide, in
 
 uint32_t* GenerateBrickTexture(int texWidth, int texHeight);
 uint32_t* GenerateFloorTexture(int texWidth, int texHeight);
+uint32_t* GenerateSpriteTexture(int texWidth, int texHeight);
 
 void UpdateFrame();
 
@@ -141,7 +142,7 @@ void RenderSprites()
     for (int i = 0; i < spriteCount; i++)
     {
         spriteOrder[i] = i;
-        spriteDistance[i] = (player.posX - sprites[i],x) * (player.posX - sprites[i],x)
+        spriteDistance[i] = (player.posX - sprites[i].x) * (player.posX - sprites[i].x)
                             + (player.posY - sprites[i].y) * (player.posY - sprites[i].y);
     }
 
@@ -165,7 +166,47 @@ void RenderSprites()
         double spriteX = sprites[s].x - player.posX;
         double spriteY = sprites[s].y - player.posY;
 
-        
+        double invDet = 1.0 / (player.planeX * player.dirY - player.dirX * player.planeY);
+        double transformX = invDet * (player.dirY * spriteX - player.dirX * spriteY);
+        double transformY = invDet * (-player.planeY * spriteX + player.planeX * spriteY);
+
+        if (transformY <= 0.1) continue;
+
+        int spriteScreenX = (int)(SCREEN_WIDTH / 2 * (1.0 + transformX / transformY));
+        int spriteHeight = (int)(SCREEN_HEIGHT / transformY);
+
+        int drawStartY = SCREEN_HEIGHT / 2 - spriteHeight / 2;
+        if (drawStartY < 0) drawStartY = 0;
+        int drawEndY = SCREEN_HEIGHT / 2 + spriteHeight / 2;
+        if (drawEndY > SCREEN_HEIGHT) drawEndY = SCREEN_HEIGHT - 1;
+
+        int spriteWidth = spriteHeight;
+        int originalStartX = spriteScreenX - spriteWidth / 2;
+        int drawStartX = originalStartX;
+        if (drawStartX < 0) drawStartX = 0;
+        int drawEndX = spriteScreenX + spriteWidth / 2;
+        if (drawEndX > SCREEN_WIDTH) drawEndX = SCREEN_WIDTH - 1;
+
+        for (int stripe = drawStartX; stripe < drawEndX; stripe++)
+        {
+            if (transformY >= zBuffer[stripe]) continue;
+
+            for (int y = drawStartY; y < drawEndY; y++)
+            {
+                int texX = (int)((stripe - originalStartX) * texWidth) / spriteWidth;
+                int texY = (int)((y - drawStartY) * texHeight) / spriteHeight;
+
+                uint32_t pixel = spriteTex[texY * texWidth + texX];
+                Color color = GetColor(pixel);
+
+                if (color.r == 255 && color.g == 0 && color.b == 255)
+                {
+                    continue;
+                }
+
+                screen[y][stripe] = color;
+            }
+        }
     }
 }
 
@@ -334,6 +375,7 @@ void UpdateFrame()
         }
     }
 
+    RenderSprites();
     UpdateTexture(tex, *screen);
     BeginDrawing();
     DrawTexture(tex, 0, 0, WHITE);
@@ -476,7 +518,7 @@ uint32_t* GenerateFloorTexture(int texWidth, int texHeight)
     return tex;
 }
 
-uint32_t GenerateSpriteTexture(int texWidth, int texHeight)
+uint32_t* GenerateSpriteTexture(int texWidth, int texHeight)
 {
     int size = texWidth * texHeight;
     uint32_t* tex = malloc(size * sizeof(uint32_t));
@@ -494,7 +536,7 @@ uint32_t GenerateSpriteTexture(int texWidth, int texHeight)
             }
             else
             {
-                tex[y * texWidth + x] = ColorToInt((Color){255, 0, 50, 255});
+                tex[y * texWidth + x] = ColorToInt((Color){255, 0, 255, 255});
             }
         }
     }
